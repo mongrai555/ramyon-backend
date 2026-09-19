@@ -80,8 +80,9 @@ export class BillsService {
       { $set: { paymentStatus: 'paid', status: 'completed' } },
     ).exec();
 
-    // 7. Update table status to 'active' (vacant)
-    await this.tablesService.update(tableId, { status: 'active' });
+    // 7. End the seating: table goes vacant and its session rotates, which is
+    // what flips the customers' phones to the thank-you screen.
+    await this.tablesService.closeSession(tableId);
 
     return savedBill;
   }

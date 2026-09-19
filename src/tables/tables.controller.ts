@@ -50,6 +50,13 @@ export class TablesController {
     return this.tablesService.remove(id);
   }
 
+  @Post(':id/close')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'staff')
+  closeSession(@Param('id') id: string) {
+    return this.tablesService.closeSession(id);
+  }
+
   @Get(':id/qrcode')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'staff')

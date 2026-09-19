@@ -48,6 +48,7 @@ export class TablesService {
       number: createTableDto.number,
       restaurantId: new Types.ObjectId(restaurantId),
       qrCodeUrl,
+      sessionId: new Types.ObjectId().toString(),
       status: 'active',
     });
 
@@ -59,7 +60,26 @@ export class TablesService {
     if (!table) {
       throw new NotFoundException(`Table with ID ${id} not found`);
     }
+
+    // Tables created before sessions existed have no id yet. Give them one on
+    // first read rather than shipping a migration nobody remembers to run.
+    if (!table.sessionId) {
+      table.sessionId = new Types.ObjectId().toString();
+      await table.save();
+    }
+
     return table;
+  }
+
+  /**
+   * Ends the current seating: the table goes back to vacant and its session id
+   * rotates, which is the signal every phone on that table's menu watches for.
+   */
+  async closeSession(id: string): Promise<TableDocument> {
+    const table = await this.findOne(id);
+    table.status = 'active';
+    table.sessionId = new Types.ObjectId().toString();
+    return table.save();
   }
 
   async findAllByRestaurant(restaurantId: string): Promise<TableDocument[]> {
@@ -129,8 +149,9 @@ export class TablesService {
       }
     ).exec();
 
-    // 3. Mark source table as vacant (active)
+    // 3. Source table is now vacant, and whoever sat there is finished with it
     fromTable.status = 'active';
+    fromTable.sessionId = new Types.ObjectId().toString();
     await fromTable.save();
 
     // 4. Mark target table as occupied
